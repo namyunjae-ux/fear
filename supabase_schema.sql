@@ -41,6 +41,12 @@ FOR UPDATE
 USING (true)
 WITH CHECK (true);
 
+-- 5.1 Policy: Allow delete of posts
+CREATE POLICY "Allow public delete of posts"
+ON public.posts
+FOR DELETE
+USING (true);
+
 -- 6. Enable Realtime updates for posts
 ALTER PUBLICATION supabase_realtime ADD TABLE public.posts;
 

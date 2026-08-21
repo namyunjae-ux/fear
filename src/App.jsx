@@ -20,7 +20,11 @@ import {
   Copy,
   Check,
   X,
-  UserCheck
+  UserCheck,
+  Trash2,
+  PenLine,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 const MAX_CHARS = 1000;
@@ -48,6 +52,7 @@ function formatRelativeTime(dateString) {
 export default function App() {
   const [keeper, setKeeper] = useState(() => getOrCreateKeeper());
   const [isKeeperModalOpen, setIsKeeperModalOpen] = useState(false);
+  const [isMobileFormOpen, setIsMobileFormOpen] = useState(false);
   const [restoreInput, setRestoreInput] = useState('');
   const [copiedKey, setCopiedKey] = useState(false);
 
@@ -238,6 +243,29 @@ export default function App() {
     } catch {}
   };
 
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Are you sure you want to remove this reflection from the archive?')) {
+      return;
+    }
+
+    // Optimistic UI update
+    setPosts(prev => prev.filter(p => p.id !== postId));
+    const updatedMyIds = myPostIds.filter(id => id !== postId);
+    setMyPostIds(updatedMyIds);
+    try {
+      localStorage.setItem(MY_POSTS_STORAGE_KEY, JSON.stringify(updatedMyIds));
+    } catch {}
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('posts').delete().eq('id', postId);
+      } catch (err) {
+        console.error('Failed to delete post from Supabase:', err);
+      }
+    }
+    showToast('Reflection removed from archive.');
+  };
+
   const handleHeartClick = async (postId, currentHearts) => {
     const alreadyLiked = likedPosts.includes(postId);
     const newLiked = alreadyLiked
@@ -358,11 +386,24 @@ export default function App() {
       {/* Main 2-Column Grid */}
       <main className="editorial-grid">
         {/* Left Pinned Panel */}
-        <aside className="pinned-panel">
+        <aside className={`pinned-panel ${!isMobileFormOpen ? 'mobile-collapsed' : ''}`}>
           <h1 className="panel-title">Shadows<br />& Light</h1>
           <p className="panel-subtitle">
             An anonymous human archive of unspoken fears and earned courage.
           </p>
+
+          {/* Mobile Toggle Button */}
+          <button
+            type="button"
+            className="mobile-write-toggle-btn"
+            onClick={() => setIsMobileFormOpen(!isMobileFormOpen)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PenLine size={14} color="#d4c5a9" />
+              <span>{isMobileFormOpen ? 'Close Writing Desk' : 'Write a Reflection'}</span>
+            </div>
+            {isMobileFormOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
 
           <form onSubmit={handleSubmitPost} className="authoring-form">
             <div className="type-selector-label">I want to archive</div>
@@ -514,6 +555,17 @@ export default function App() {
                         <MessageSquare size={13} />
                         <span>{postComments.length}</span>
                       </button>
+
+                      {isMyPost && (
+                        <button
+                          onClick={() => handleDeletePost(item.id)}
+                          className="editorial-action-btn delete-btn"
+                          title="Delete this record"
+                        >
+                          <Trash2 size={13} />
+                          <span>Delete</span>
+                        </button>
+                      )}
                     </div>
 
                     {/* Expanded Reflections / Comments */}

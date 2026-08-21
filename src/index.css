@@ -254,10 +254,51 @@ body {
   align-items: start;
 }
 
+/* Mobile Authoring Toggle Button */
+.mobile-write-toggle-btn {
+  display: none;
+  width: 100%;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-line);
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  padding: 14px 20px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  transition: all 0.2s ease;
+}
+
+.mobile-write-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
 @media (max-width: 980px) {
   .editorial-grid {
     grid-template-columns: 1fr;
-    gap: 48px;
+    gap: 32px;
+  }
+
+  .mobile-write-toggle-btn {
+    display: flex;
+  }
+
+  .pinned-panel {
+    position: static;
+    padding: 24px 20px;
+  }
+
+  .panel-title {
+    font-size: 2.4rem;
+  }
+
+  /* When collapsed on mobile */
+  .pinned-panel.mobile-collapsed .authoring-form {
+    display: none;
   }
 }
 
@@ -582,6 +623,18 @@ body {
   border-color: rgba(224, 122, 95, 0.4);
   color: #e07a5f;
   background: rgba(224, 122, 95, 0.08);
+}
+
+.editorial-action-btn.delete-btn {
+  margin-left: auto;
+  color: var(--text-dim);
+  border-color: transparent;
+}
+
+.editorial-action-btn.delete-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.25);
 }
 
 /* Comments Section */
