@@ -379,7 +379,7 @@ export default function App() {
               </div>
             ) : (
               sortedPosts.map((item, index) => {
-                const postComments = comments.filter(c => c.post_id === item.id);
+                const postComments = comments.filter(c => c.post_id === item.id && !/[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(c.content));
                 const isExpanded = expandedComments.includes(item.id);
                 const isLiked = likedPosts.includes(item.id);
                 const entryIndex = String(posts.length - index).padStart(3, '0');
