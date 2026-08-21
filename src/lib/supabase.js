@@ -40,7 +40,7 @@ const DEFAULT_POSTS = [
   {
     id: 'mock-f4',
     type: 'fear',
-    content: '남들과 비교하면서 뒤처지고 있다는 공포감이 밤마다 잠을 못 자게 해요.',
+    content: 'Fear that I am running out of time while everyone around me seems to have it all figured out.',
     hearts_count: 42,
     created_at: new Date(Date.now() - 1000 * 60 * 360).toISOString(), // 6h ago
   },
@@ -68,7 +68,7 @@ const DEFAULT_POSTS = [
   {
     id: 'mock-o4',
     type: 'overcome',
-    content: '완벽주의를 버리고 "일단 50점짜리라도 완성하자"고 마음먹은 순간, 수년간 짓누르던 시작의 공포가 사라졌습니다.',
+    content: 'Letting go of perfectionism and aiming for "good enough to start" ended years of paralyzing dread.',
     hearts_count: 112,
     created_at: new Date(Date.now() - 1000 * 60 * 480).toISOString(), // 8h ago
   }
@@ -126,13 +126,13 @@ const DEFAULT_COMMENTS = [
   {
     id: 'mock-c1',
     post_id: 'mock-f1',
-    content: '당신만 그런 게 아니에요. 완벽할 필요는 전혀 없습니다. 힘내세요!',
+    content: 'You are not alone in this feeling. Perfection is an illusion—give yourself grace.',
     created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
   },
   {
     id: 'mock-c2',
     post_id: 'mock-o1',
-    content: '매일 1분씩 시도해보셨다니 정말 큰 용기이자 지혜네요. 저도 오늘부터 해볼게요.',
+    content: 'One minute a day is such pure wisdom. Thank you for sharing this courage.',
     created_at: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
   }
 ];

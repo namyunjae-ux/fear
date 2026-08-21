@@ -269,7 +269,6 @@ export default function App() {
       {/* Top minimal bar */}
       <header className="editorial-topbar">
         <div className="topbar-brand">Shadows & Light — Anonymous Archive</div>
-        <div className="topbar-meta">{posts.length} entries preserved</div>
       </header>
 
       {/* Main 2-Column Grid */}
