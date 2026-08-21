@@ -8,15 +8,13 @@ import {
   getLocalComments,
   saveLocalComment
 } from './lib/supabase';
-import confetti from 'canvas-confetti';
 import { 
   Heart, 
-  Send, 
-  Sparkles, 
-  Shield, 
-  MessageCircle, 
+  MessageSquare, 
+  ArrowRight, 
+  Clock, 
   Flame, 
-  Clock 
+  CornerDownRight 
 } from 'lucide-react';
 
 const MAX_CHARS = 1000;
@@ -41,12 +39,12 @@ function formatRelativeTime(dateString) {
 }
 
 export default function App() {
-  const [fearInput, setFearInput] = useState('');
-  const [overcomeInput, setOvercomeInput] = useState('');
+  const [selectedType, setSelectedType] = useState('fear'); // 'fear' | 'overcome'
+  const [inputText, setInputText] = useState('');
   const [posts, setPosts] = useState([]);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'fear' | 'overcome'
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'fear' | 'overcome'
   const [sortBy, setSortBy] = useState('latest'); // 'latest' | 'top'
   const [toastMessage, setToastMessage] = useState(null);
   
@@ -106,7 +104,6 @@ export default function App() {
         console.error('Error fetching Supabase posts:', err);
       }
     }
-    // Fallback to local
     setPosts(getLocalPosts());
   }
 
@@ -129,22 +126,22 @@ export default function App() {
     setComments(getLocalComments());
   }
 
-  function showToast(msg, isWarm = false) {
-    setToastMessage({ text: msg, isWarm });
+  function showToast(msg) {
+    setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
     }, 3500);
   }
 
-  const handleShareFear = async (e) => {
+  const handleSubmitPost = async (e) => {
     e.preventDefault();
-    const content = fearInput.trim();
+    const content = inputText.trim();
     if (!content) return;
 
     setLoading(true);
     const newPost = {
       id: isSupabaseConfigured ? undefined : `local-${Date.now()}`,
-      type: 'fear',
+      type: selectedType,
       content,
       hearts_count: 0,
       created_at: new Date().toISOString(),
@@ -153,7 +150,7 @@ export default function App() {
     try {
       if (isSupabaseConfigured && supabase) {
         const { error } = await supabase.from('posts').insert([{
-          type: 'fear',
+          type: selectedType,
           content,
           hearts_count: 0,
         }]);
@@ -163,62 +160,14 @@ export default function App() {
         setPosts(updated);
       }
 
-      setFearInput('');
-      showToast('Your fear has been released into the space.');
+      setInputText('');
+      showToast(selectedType === 'fear' ? 'Your shadow has been archived.' : 'Your courage has been archived.');
     } catch (err) {
-      console.error('Failed to post fear:', err);
-      showToast('Failed to post. Saved locally instead.');
+      console.error('Failed to post entry:', err);
       const updated = saveLocalPost(newPost);
       setPosts(updated);
-      setFearInput('');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleShareOvercome = async (e) => {
-    e.preventDefault();
-    const content = overcomeInput.trim();
-    if (!content) return;
-
-    setLoading(true);
-    const newPost = {
-      id: isSupabaseConfigured ? undefined : `local-${Date.now()}`,
-      type: 'overcome',
-      content,
-      hearts_count: 0,
-      created_at: new Date().toISOString(),
-    };
-
-    try {
-      if (isSupabaseConfigured && supabase) {
-        const { error } = await supabase.from('posts').insert([{
-          type: 'overcome',
-          content,
-          hearts_count: 0,
-        }]);
-        if (error) throw error;
-      } else {
-        const updated = saveLocalPost(newPost);
-        setPosts(updated);
-      }
-
-      // Sparkle / Confetti celebration on sharing courage
-      confetti({
-        particleCount: 50,
-        spread: 60,
-        origin: { y: 0.75 },
-        colors: ['#e59b43', '#f5b76c', '#ffffff', '#dc7b20']
-      });
-
-      setOvercomeInput('');
-      showToast('Thank you for lighting the way with your courage.', true);
-    } catch (err) {
-      console.error('Failed to post overcome story:', err);
-      showToast('Failed to post. Saved locally instead.');
-      const updated = saveLocalPost(newPost);
-      setPosts(updated);
-      setOvercomeInput('');
+      setInputText('');
+      showToast('Archived locally.');
     } finally {
       setLoading(false);
     }
@@ -255,7 +204,6 @@ export default function App() {
     }
   };
 
-  // Toggle comment section for a post
   const toggleComments = (postId) => {
     setExpandedComments(prev => 
       prev.includes(postId) 
@@ -264,7 +212,6 @@ export default function App() {
     );
   };
 
-  // Submit a comment/reply
   const handleCommentSubmit = async (postId, e) => {
     e.preventDefault();
     const commentText = (commentInputs[postId] || '').trim();
@@ -291,7 +238,7 @@ export default function App() {
       }
 
       setCommentInputs(prev => ({ ...prev, [postId]: '' }));
-      showToast('Your warm words have been added.');
+      showToast('Reflection note attached.');
     } catch (err) {
       console.error('Failed to post comment:', err);
       const updated = saveLocalComment(newComment);
@@ -303,7 +250,13 @@ export default function App() {
   };
 
   // Sorting & Filtering
-  const sortedPosts = [...posts].sort((a, b) => {
+  const filteredPosts = posts.filter(p => {
+    if (activeFilter === 'fear') return p.type === 'fear';
+    if (activeFilter === 'overcome') return p.type === 'overcome';
+    return true;
+  });
+
+  const sortedPosts = [...filteredPosts].sort((a, b) => {
     if (sortBy === 'top') {
       const diffHearts = (b.hearts_count || 0) - (a.hearts_count || 0);
       if (diffHearts !== 0) return diffHearts;
@@ -311,267 +264,232 @@ export default function App() {
     return new Date(b.created_at) - new Date(a.created_at);
   });
 
-  const fearsList = sortedPosts.filter(p => p.type === 'fear');
-  const overcomeList = sortedPosts.filter(p => p.type === 'overcome');
-
-  // Helper to render individual story card
-  const renderStoryCard = (item, isOvercome = false) => {
-    const postComments = comments.filter(c => c.post_id === item.id);
-    const isExpanded = expandedComments.includes(item.id);
-    const isLiked = likedPosts.includes(item.id);
-
-    return (
-      <div key={item.id} className={`story-card ${isOvercome ? 'story-overcome' : 'story-fear'}`}>
-        <p className="story-content">{item.content}</p>
-        
-        <div className="story-meta">
-          <span>{formatRelativeTime(item.created_at)}</span>
-          
-          <div className="meta-actions">
-            {/* Comment Toggle Button */}
-            <button
-              onClick={() => toggleComments(item.id)}
-              className={`comment-toggle-btn ${isExpanded ? 'active' : ''}`}
-              title="View comments & reply"
-            >
-              <MessageCircle size={14} />
-              <span>{postComments.length}</span>
-            </button>
-
-            {/* Heart Reaction Button */}
-            <button
-              onClick={() => handleHeartClick(item.id, item.hearts_count)}
-              className={`heart-button ${isLiked ? 'reacted' : ''}`}
-              title={isOvercome ? "Inspired" : "Send empathy"}
-            >
-              <Heart size={14} fill={isLiked ? 'currentColor' : 'none'} />
-              <span>{item.hearts_count || 0}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Collapsible Comments Section */}
-        {isExpanded && (
-          <div className="comments-container">
-            {/* Comment List */}
-            <div className="comments-list">
-              {postComments.length === 0 ? (
-                <div className="no-comments-text">No words shared yet. Leave a kind thought.</div>
-              ) : (
-                postComments.map(c => (
-                  <div key={c.id} className="comment-item">
-                    <p className="comment-text">{c.content}</p>
-                    <span className="comment-time">{formatRelativeTime(c.created_at)}</span>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Comment Input Form */}
-            <form onSubmit={(e) => handleCommentSubmit(item.id, e)} className="comment-form">
-              <input
-                type="text"
-                placeholder="Leave a word of warmth or empathy..."
-                maxLength={MAX_COMMENT_CHARS}
-                value={commentInputs[item.id] || ''}
-                onChange={(e) => setCommentInputs({ ...commentInputs, [item.id]: e.target.value })}
-                className="comment-input"
-              />
-              <button
-                type="submit"
-                disabled={commentSubmitting[item.id] || !(commentInputs[item.id] || '').trim()}
-                className="comment-submit-btn"
-              >
-                <Send size={13} />
-              </button>
-            </form>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
-    <>
-      {/* Background Ambient Glows */}
-      <div className="ambient-glow-wrapper">
-        <div className="ambient-glow-center"></div>
-        <div className="ambient-glow-top"></div>
-        <div className="ambient-glow-left"></div>
-      </div>
+    <div className="editorial-wrapper">
+      {/* Top minimal bar */}
+      <header className="editorial-topbar">
+        <div className="topbar-brand">Shadows & Light — Anonymous Archive</div>
+        <div className="topbar-meta">{posts.length} entries preserved</div>
+      </header>
 
-      <div className="app-container">
-        {/* Header */}
-        <header className="app-header">
-          <a href="/" className="brand-logo">
-            <span className="brand-symbol"></span>
-            <span>Echoes</span>
-          </a>
-        </header>
+      {/* Main 2-Column Grid */}
+      <main className="editorial-grid">
+        {/* Left Pinned Panel */}
+        <aside className="pinned-panel">
+          <h1 className="panel-title">Shadows<br />& Light</h1>
+          <p className="panel-subtitle">
+            An anonymous human archive of unspoken fears and earned courage.
+          </p>
 
-        {/* Hero Section */}
-        <section className="hero-section">
-          <h1 className="hero-title">Share Your Shadows, Light the Way</h1>
-          <p className="hero-subtext">No accounts, no titles. Just pure thoughts.</p>
-        </section>
-
-        {/* 2-Column Side-by-Side Input Section */}
-        <section className="dual-input-grid">
-          {/* Left: Current Fears */}
-          <div className="input-card fear-card">
-            <h2 className="card-header-title">Current Fears</h2>
-            <form onSubmit={handleShareFear}>
-              <textarea
-                className="custom-textarea"
-                placeholder="What fear are you facing right now?"
-                value={fearInput}
-                onChange={(e) => setFearInput(e.target.value.slice(0, MAX_CHARS))}
-                rows={4}
-              />
-              <div className="textarea-footer">
-                <span className={`char-counter ${fearInput.length >= MAX_CHARS ? 'warning' : ''}`}>
-                  {fearInput.length}/{MAX_CHARS}
-                </span>
-              </div>
+          <form onSubmit={handleSubmitPost} className="authoring-form">
+            <div className="type-selector-label">I want to archive</div>
+            
+            <div className="type-selector">
               <button
-                type="submit"
-                disabled={loading || !fearInput.trim()}
-                className="btn-submit btn-fear"
+                type="button"
+                className={`type-btn ${selectedType === 'fear' ? 'active' : ''}`}
+                onClick={() => setSelectedType('fear')}
               >
-                <Send size={16} />
-                <span>Share Fear</span>
+                Current Fear
               </button>
-            </form>
-          </div>
-
-          {/* Right: Overcoming Stories */}
-          <div className="input-card overcome-card">
-            <h2 className="card-header-title">Overcoming Stories</h2>
-            <form onSubmit={handleShareOvercome}>
-              <textarea
-                className="custom-textarea"
-                placeholder="How did you overcome fear in the past?"
-                value={overcomeInput}
-                onChange={(e) => setOvercomeInput(e.target.value.slice(0, MAX_CHARS))}
-                rows={4}
-              />
-              <div className="textarea-footer">
-                <span className={`char-counter ${overcomeInput.length >= MAX_CHARS ? 'warning' : ''}`}>
-                  {overcomeInput.length}/{MAX_CHARS}
-                </span>
-              </div>
               <button
-                type="submit"
-                disabled={loading || !overcomeInput.trim()}
-                className="btn-submit btn-overcome"
+                type="button"
+                className={`type-btn ${selectedType === 'overcome' ? 'active' : ''}`}
+                onClick={() => setSelectedType('overcome')}
               >
-                <Sparkles size={16} />
-                <span>Share Story</span>
+                Earned Courage
               </button>
-            </form>
-          </div>
-        </section>
-
-        {/* Public Feed Section */}
-        <section className="feed-section">
-          <div className="feed-header">
-            <div className="feed-title-wrap">
-              <h2 className="feed-title">Community Reflections</h2>
-              <span className="feed-badge">{posts.length} shared</span>
             </div>
 
-            <div className="feed-controls-wrap">
-              {/* Sort Options: Latest vs Most Empathetic */}
-              <div className="sort-tabs">
-                <button
-                  className={`sort-btn ${sortBy === 'latest' ? 'active' : ''}`}
-                  onClick={() => setSortBy('latest')}
-                  title="Sort by newest"
-                >
-                  <Clock size={13} />
-                  <span>Latest</span>
-                </button>
-                <button
-                  className={`sort-btn ${sortBy === 'top' ? 'active' : ''}`}
-                  onClick={() => setSortBy('top')}
-                  title="Sort by most empathetic hearts"
-                >
-                  <Flame size={13} />
-                  <span>Top Empathy</span>
-                </button>
-              </div>
+            <textarea
+              className="authoring-textarea"
+              placeholder={
+                selectedType === 'fear'
+                  ? "Describe your unspoken fear... (Anonymous, untraceable, real)"
+                  : "Describe the courage you found or how you overcame it..."
+              }
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value.slice(0, MAX_CHARS))}
+              rows={5}
+            />
 
-              {/* Type Filter Tabs */}
-              <div className="filter-tabs">
+            <div className="authoring-footer">
+              <span className="char-indicator">
+                {inputText.length}/{MAX_CHARS}
+              </span>
+              <button
+                type="submit"
+                disabled={loading || !inputText.trim()}
+                className="btn-editorial-submit"
+              >
+                <span>Submit</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </form>
+        </aside>
+
+        {/* Right Feed Panel */}
+        <section className="feed-column-archive">
+          {/* Feed Controls */}
+          <div className="archive-controls">
+            <div className="archive-status-line">
+              Showing {sortedPosts.length} reflections
+            </div>
+
+            <div className="archive-filter-group">
+              {/* Type Filter Pills */}
+              <div className="filter-pills">
                 <button
-                  className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('all')}
+                  className={`pill-btn ${activeFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setActiveFilter('all')}
                 >
                   All
                 </button>
                 <button
-                  className={`tab-btn ${activeTab === 'fear' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('fear')}
+                  className={`pill-btn ${activeFilter === 'fear' ? 'active' : ''}`}
+                  onClick={() => setActiveFilter('fear')}
                 >
-                  Fears ({fearsList.length})
+                  Fears
                 </button>
                 <button
-                  className={`tab-btn ${activeTab === 'overcome' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('overcome')}
+                  className={`pill-btn ${activeFilter === 'overcome' ? 'active' : ''}`}
+                  onClick={() => setActiveFilter('overcome')}
                 >
-                  Overcoming ({overcomeList.length})
+                  Courage
                 </button>
               </div>
+
+              {/* Sort Selector */}
+              <button
+                className="sort-selector-btn"
+                onClick={() => setSortBy(sortBy === 'latest' ? 'top' : 'latest')}
+                title="Toggle sort order"
+              >
+                {sortBy === 'latest' ? <Clock size={12} /> : <Flame size={12} />}
+                <span>{sortBy === 'latest' ? 'Latest' : 'Most Resonant'}</span>
+              </button>
             </div>
           </div>
 
-          {/* Dual Feed Grid */}
-          <div className="dual-feed-grid">
-            {/* Left Column: Fears */}
-            {(activeTab === 'all' || activeTab === 'fear') && (
-              <div className="feed-column">
-                <div className="column-label">Current Fears</div>
-                {fearsList.length === 0 ? (
-                  <div className="empty-state">No fears shared yet. Be the first to express.</div>
-                ) : (
-                  fearsList.map((item) => renderStoryCard(item, false))
-                )}
+          {/* Entries Feed */}
+          <div className="archive-list">
+            {sortedPosts.length === 0 ? (
+              <div className="empty-archive">
+                No entries found in this section. Be the first to record.
               </div>
-            )}
+            ) : (
+              sortedPosts.map((item, index) => {
+                const postComments = comments.filter(c => c.post_id === item.id);
+                const isExpanded = expandedComments.includes(item.id);
+                const isLiked = likedPosts.includes(item.id);
+                const entryIndex = String(posts.length - index).padStart(3, '0');
 
-            {/* Right Column: Overcoming */}
-            {(activeTab === 'all' || activeTab === 'overcome') && (
-              <div className="feed-column">
-                <div className="column-label overcome-label">Overcoming Stories</div>
-                {overcomeList.length === 0 ? (
-                  <div className="empty-state">No stories yet. Share your experience to guide others.</div>
-                ) : (
-                  overcomeList.map((item) => renderStoryCard(item, true))
-                )}
-              </div>
+                return (
+                  <article key={item.id} className="archive-entry">
+                    {/* Header */}
+                    <div className="entry-header">
+                      <div className="entry-meta-left">
+                        <span className="entry-index">{entryIndex}.</span>
+                        <span className={`entry-type-tag ${item.type === 'overcome' ? 'tag-overcome' : 'tag-fear'}`}>
+                          {item.type === 'overcome' ? 'Courage' : 'Fear'}
+                        </span>
+                      </div>
+                      <time className="entry-time">{formatRelativeTime(item.created_at)}</time>
+                    </div>
+
+                    {/* Content */}
+                    <p className="entry-body">{item.content}</p>
+
+                    {/* Actions */}
+                    <div className="entry-footer">
+                      <button
+                        onClick={() => handleHeartClick(item.id, item.hearts_count)}
+                        className={`editorial-action-btn ${isLiked ? 'liked' : ''}`}
+                        title="Empathy"
+                      >
+                        <Heart size={13} fill={isLiked ? 'currentColor' : 'none'} />
+                        <span>{item.hearts_count || 0}</span>
+                      </button>
+
+                      <button
+                        onClick={() => toggleComments(item.id)}
+                        className={`editorial-action-btn ${isExpanded ? 'active' : ''}`}
+                        title="Reflections"
+                      >
+                        <MessageSquare size={13} />
+                        <span>{postComments.length}</span>
+                      </button>
+                    </div>
+
+                    {/* Expanded Reflections / Comments */}
+                    {isExpanded && (
+                      <div className="entry-comments-block">
+                        <div className="comments-timeline">
+                          {postComments.length === 0 ? (
+                            <div className="no-comments-prompt">
+                              No words attached yet. Leave a quiet reflection.
+                            </div>
+                          ) : (
+                            postComments.map(c => (
+                              <div key={c.id} className="single-comment">
+                                <div>{c.content}</div>
+                                <span className="single-comment-time">
+                                  {formatRelativeTime(c.created_at)}
+                                </span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Comment Input */}
+                        <form
+                          onSubmit={(e) => handleCommentSubmit(item.id, e)}
+                          className="comment-authoring-row"
+                        >
+                          <input
+                            type="text"
+                            placeholder="Leave a word of warmth or understanding..."
+                            maxLength={MAX_COMMENT_CHARS}
+                            value={commentInputs[item.id] || ''}
+                            onChange={(e) => setCommentInputs({ ...commentInputs, [item.id]: e.target.value })}
+                            className="comment-input-editorial"
+                          />
+                          <button
+                            type="submit"
+                            disabled={commentSubmitting[item.id] || !(commentInputs[item.id] || '').trim()}
+                            className="comment-btn-editorial"
+                          >
+                            <CornerDownRight size={13} />
+                          </button>
+                        </form>
+                      </div>
+                    )}
+                  </article>
+                );
+              })
             )}
           </div>
         </section>
+      </main>
 
-        {/* Minimal Footer */}
-        <footer className="app-footer">
-          <p>© 2026 Echoes. All shared words are anonymous and public.</p>
-          <p className="footer-privacy-note">A sanctuary for honest vulnerability and collective courage.</p>
-          <p className="footer-feedback">
-            Feedback & Inquiries: <a href="mailto:nyjnam774@gmail.com" className="feedback-email">nyjnam774@gmail.com</a>
-          </p>
-        </footer>
-      </div>
+      {/* Minimal Footer */}
+      <footer className="editorial-footer">
+        <p>© 2026 Shadows & Light. Anonymous public human archive.</p>
+        <p>
+          Feedback & Inquiries:{' '}
+          <a href="mailto:nyjnam774@gmail.com" className="footer-email-link">
+            nyjnam774@gmail.com
+          </a>
+        </p>
+      </footer>
 
-      {/* Toast Popups */}
+      {/* Toast */}
       {toastMessage && (
-        <div className="toast-container">
-          <div className={`toast ${toastMessage.isWarm ? 'toast-warm' : ''}`}>
-            {toastMessage.isWarm ? <Sparkles size={18} color="#e59b43" /> : <Shield size={18} color="#94a3b8" />}
-            <span>{toastMessage.text}</span>
-          </div>
+        <div className="editorial-toast">
+          {toastMessage}
         </div>
       )}
-    </>
+    </div>
   );
 }
