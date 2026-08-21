@@ -8,8 +8,12 @@ CREATE TABLE IF NOT EXISTS public.posts (
     type TEXT NOT NULL CHECK (type IN ('fear', 'overcome')),
     content TEXT NOT NULL CHECK (length(trim(content)) > 0 AND length(content) <= 1000),
     hearts_count INTEGER DEFAULT 0 NOT NULL,
+    author_key TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Migration for existing tables
+ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS author_key TEXT;
 
 -- 2. Enable Row Level Security (RLS)
 ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;

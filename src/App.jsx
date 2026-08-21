@@ -185,20 +185,29 @@ export default function App() {
       id: isSupabaseConfigured ? undefined : newId,
       type: selectedType,
       content,
+      author_key: keeper.keyphrase,
       hearts_count: 0,
       created_at: new Date().toISOString(),
     };
 
     try {
       if (isSupabaseConfigured && supabase) {
-        const { data, error } = await supabase.from('posts').insert([{
+        // Try inserting with author_key
+        const postData = {
           type: selectedType,
           content,
           hearts_count: 0,
-        }]).select();
+          author_key: keeper.keyphrase,
+        };
 
-        if (error) throw error;
-        if (data && data[0]) {
+        const { data, error } = await supabase.from('posts').insert([postData]).select();
+
+        if (error) {
+          // If author_key column is not yet created in Supabase schema cache, fallback gracefully
+          const fallbackData = { type: selectedType, content, hearts_count: 0 };
+          const { data: fbData } = await supabase.from('posts').insert([fallbackData]).select();
+          if (fbData && fbData[0]) saveMyPostId(fbData[0].id);
+        } else if (data && data[0]) {
           saveMyPostId(data[0].id);
         }
       } else {
@@ -306,10 +315,17 @@ export default function App() {
   };
 
   // Sorting & Filtering
+  const isPostMine = (post) => {
+    if (!post) return false;
+    return (post.author_key && post.author_key === keeper.keyphrase) || myPostIds.includes(post.id);
+  };
+
+  const myPostsCount = posts.filter(isPostMine).length;
+
   const filteredPosts = posts.filter(p => {
     if (activeFilter === 'fear') return p.type === 'fear';
     if (activeFilter === 'overcome') return p.type === 'overcome';
-    if (activeFilter === 'mine') return myPostIds.includes(p.id);
+    if (activeFilter === 'mine') return isPostMine(p);
     return true;
   });
 
@@ -430,7 +446,7 @@ export default function App() {
                   onClick={() => setActiveFilter('mine')}
                   title="My authored records"
                 >
-                  My Archive ({myPostIds.length})
+                  My Archive ({myPostsCount})
                 </button>
               </div>
 
@@ -459,7 +475,7 @@ export default function App() {
                 const postComments = comments.filter(c => c.post_id === item.id && !/[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(c.content));
                 const isExpanded = expandedComments.includes(item.id);
                 const isLiked = likedPosts.includes(item.id);
-                const isMyPost = myPostIds.includes(item.id);
+                const isMyPost = isPostMine(item);
                 const entryIndex = String(posts.length - index).padStart(3, '0');
 
                 return (
